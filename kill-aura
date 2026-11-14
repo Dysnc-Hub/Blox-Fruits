@@ -1,1 +1,194 @@
+-- Kalen Hub | Blox Fruits Master
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
+local Window = Fluent:CreateWindow({
+    Title = "Kalen Hub | Blox Fruits",
+    SubTitle = "by miteuxz",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Dark"
+})
+
+-- Criação das Abas
+local Tabs = {
+    Main = Window:AddTab({ Title = "Kill Aura", Icon = "swords" }),
+    Farm = Window:AddTab({ Title = "Auto Farm", Icon = "crosshair" }),
+    Teleport = Window:AddTab({ Title = "Teleportes", Icon = "map-pin" }),
+    Misc = Window:AddTab({ Title = "Utilidades", Icon = "settings" })
+}
+
+local Options = Fluent.Options
+
+--------------------------------------------------------------------------------
+-- SERVIÇOS E VARIÁVEIS GLOBAIS
+--------------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+local Net = require(ReplicatedStorage.Modules.Net)
+local RegisterHitEvent = Net:RemoteEvent("RegisterHit", true)
+
+--------------------------------------------------------------------------------
+-- ABA 1: KILL AURA TURBO
+--------------------------------------------------------------------------------
+Tabs.Main:AddToggle("KillAuraTurbo", {
+    Title = "Ativar Kill Aura Turbo",
+    Default = false
+})
+
+Tabs.Main:AddSlider("AttackSpeed", {
+    Title = "Velocidade do Ataque (Delay)",
+    Description = "Menor = Mais rápido",
+    Default = 0.15,
+    Min = 0.05,
+    Max = 0.5,
+    Rounding = 2,
+    Callback = function(Value)
+    end
+})
+
+local function getClosestEnemy()
+    local enemiesFolder = workspace:FindFirstChild("Enemies")
+    if not enemiesFolder then return nil end
+
+    local closestTarget = nil
+    local shortestDistance = 35 -- 35 Studs
+
+    for _, enemy in ipairs(enemiesFolder:GetChildren()) do
+        local humanoidRootPart = enemy:FindFirstChild("HumanoidRootPart")
+        local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+        
+        if humanoidRootPart and humanoid and humanoid.Health > 0 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestTarget = enemy
+            end
+        end
+    end
+
+    return closestTarget
+end
+
+-- Loop de Ataque Turbo
+task.spawn(function()
+    while true do
+        local delayTime = Options.AttackSpeed and Options.AttackSpeed.Value or 0.15
+        task.wait(delayTime)
+        
+        if Options.KillAuraTurbo and Options.KillAuraTurbo.Value then
+            local target = getClosestEnemy()
+            if target then
+                local targetPart = target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart")
+                
+                if targetPart and RegisterHitEvent then
+                    pcall(function()
+                        local netModule = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Net")
+                        if netModule then
+                            local regAttack = netModule:FindFirstChild("RE/RegisterAttack")
+                            if regAttack then
+                                regAttack:FireServer(0.36666667461395264, 1)
+                            end
+                        end
+                        RegisterHitEvent:FireServer(targetPart)
+                    end)
+                end
+            end
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- ABA 2: AUTO FARM (Exemplo estrutural)
+--------------------------------------------------------------------------------
+Tabs.Farm:AddToggle("AutoFarmLevel", {
+    Title = "Auto Farm Level (Mobs Próximos)",
+    Default = false
+})
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if Options.AutoFarmLevel and Options.AutoFarmLevel.Value then
+            pcall(function()
+                local target = getClosestEnemy()
+                if target and target:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    -- Puxa o player levemente acima/perto do mob para o Kill Aura pegar
+                    local targetCFrame = target.HumanoidRootPart.CFrame * CFrame.new(0, 5, 3)
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
+                end
+            end)
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- ABA 3: TELEPORTES (Sea 1 Exemplo)
+--------------------------------------------------------------------------------
+local islandsSea1 = {
+    "Pirate Starter",
+    "Marine Starter",
+    "Jungle",
+    "Pirate Village",
+    "Desert",
+    "Snow Mountain",
+    "Magma Village"
+}
+
+Tabs.Teleport:AddDropdown("Sea1TP", {
+    Title = "Teleportar para Ilhas (Sea 1)",
+    Values = islandsSea1,
+    Default = 1,
+    Callback = function(Value)
+        local island = workspace._WorldOrigin.Locations.Map:FindFirstChild(Value)
+        if island and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = island.CFrame + Vector3.new(0, 50, 0)
+        end
+    end
+})
+
+--------------------------------------------------------------------------------
+-- ABA 4: UTILIDADES / MISC
+--------------------------------------------------------------------------------
+Tabs.Misc:AddButton({
+    Title = "Ativar NoClip (Atravessar Paredes)",
+    Description = "Desativa a colisão do seu personagem",
+    Callback = function()
+        game:GetService("RunService").Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+        Fluent:Notify({ Title = "Kalen Hub", Content = "NoClip ativado com sucesso!", Duration = 3 })
+    end
+})
+
+Tabs.Misc:AddButton({
+    Title = "Remover Cooldown / Sprint Infinito",
+    Description = "Garante corrida infinita",
+    Callback = function()
+        pcall(function()
+            local stamina = LocalPlayer.Character:FindFirstChild("Energy")
+            if stamina then
+                stamina.Changed:Connect(function()
+                    stamina.Value = 100
+                end)
+            end
+        end)
+        Fluent:Notify({ Title = "Kalen Hub", Content = "Sprint infinito aplicado!", Duration = 3 })
+    end
+})
+
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "Kalen Hub Carregado!",
+    Content = "Criado por miteuxz com sucesso.",
+    Duration = 5
+})
