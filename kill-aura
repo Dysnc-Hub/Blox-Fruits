@@ -1,194 +1,1348 @@
--- Kalen Hub | Blox Fruits Master
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local script = game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("CombatUtil")
+-- decompiled by Velocity decompiler v1.0.3
 
-local Window = Fluent:CreateWindow({
-    Title = "Kalen Hub | Blox Fruits",
-    SubTitle = "by miteuxz",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
-    Acrylic = false,
-    Theme = "Dark"
-})
-
--- Criação das Abas
-local Tabs = {
-    Main = Window:AddTab({ Title = "Kill Aura", Icon = "swords" }),
-    Farm = Window:AddTab({ Title = "Auto Farm", Icon = "crosshair" }),
-    Teleport = Window:AddTab({ Title = "Teleportes", Icon = "map-pin" }),
-    Misc = Window:AddTab({ Title = "Utilidades", Icon = "settings" })
-}
-
-local Options = Fluent.Options
-
---------------------------------------------------------------------------------
--- SERVIÇOS E VARIÁVEIS GLOBAIS
---------------------------------------------------------------------------------
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local v1 = require(game.ReplicatedStorage.Modules.AnimationUtil)
+local v2 = require(game.ReplicatedStorage.Modules.WeaponData)
+local v3 = require(game.ReplicatedStorage.Modules.Flags)
+local v4 = require(game.ReplicatedStorage.Modules.Net)
+local v5 = require(game.ReplicatedStorage.Modules.Part.GetBoundingBoxCustom)
+local v6 = require(game.ReplicatedStorage.Modules.Part.GetCornersOfPart)
+local LocalPlayer = game.Players.LocalPlayer
+local Enemies = workspace.Enemies
+local Characters = workspace.Characters
+local v7 = require(game.ReplicatedStorage.Util.WrapHighlight)
+local v8 = require(game.ReplicatedStorage.Util.HighlightAdornee)
+local v9 = RunService:IsServer()
+local v10 = {}
+local v11 = {}
+local v12 = setmetatable({}, {__mode = "k"})
+local v13 = nil
+local v14 = nil
+task.defer(function() --[[ Upvalues: v13 (ref), v14 (ref), v10 (copy), v4 (copy) ]]
+    v13 = require(game.ReplicatedStorage.Util)
+    v14 = require(script.Particle)
+    v10.RegisterHitEvent = v4:RemoteEvent("RegisterHit", true)
+    v10.ReceivedHit = v4:RemoteEvent("ReceivedHit")
+end)
 
-local Net = require(ReplicatedStorage.Modules.Net)
-local RegisterHitEvent = Net:RemoteEvent("RegisterHit", true)
+local function GetPureWeaponName(a0, a1)
+    local v15 = string.gsub(a1, "%s", "")
+    local v16 = string.lower(v15)
+    return v16
+end
 
---------------------------------------------------------------------------------
--- ABA 1: KILL AURA TURBO
---------------------------------------------------------------------------------
-Tabs.Main:AddToggle("KillAuraTurbo", {
-    Title = "Ativar Kill Aura Turbo",
-    Default = false
-})
+v11.GetPureWeaponName = GetPureWeaponName
 
-Tabs.Main:AddSlider("AttackSpeed", {
-    Title = "Velocidade do Ataque (Delay)",
-    Description = "Menor = Mais rápido",
-    Default = 0.15,
-    Min = 0.05,
-    Max = 0.5,
-    Rounding = 2,
-    Callback = function(Value)
+local function GetComboPaddingTime(a0)
+    return 0.3
+end
+
+v11.GetComboPaddingTime = GetComboPaddingTime
+
+local function GetDefaultAOEDelay(a0)
+    return 0.35
+end
+
+v11.GetDefaultAOEDelay = GetDefaultAOEDelay
+
+local function GetAttackCancelMultiplier(a0)
+    return 0.8
+end
+
+v11.GetAttackCancelMultiplier = GetAttackCancelMultiplier
+local v17 = require(game.ReplicatedStorage.Util.IsTransformed)
+
+local function HasRigEquipped(a0, a1) --[[ Upvalues: v17 (copy) ]]
+    if a1:FindFirstChild("HumanoidRootPart") and a1.HumanoidRootPart:FindFirstChild("Buddha") then
+        return false
     end
-})
 
-local function getClosestEnemy()
-    local enemiesFolder = workspace:FindFirstChild("Enemies")
-    if not enemiesFolder then return nil end
+    if a1:FindFirstChild("DogHouseForm") then
+        return false
+    end
 
-    local closestTarget = nil
-    local shortestDistance = 35 -- 35 Studs
+    local v18 = v17(a1, false, false)
+    return v18
+end
 
-    for _, enemy in ipairs(enemiesFolder:GetChildren()) do
-        local humanoidRootPart = enemy:FindFirstChild("HumanoidRootPart")
-        local humanoid = enemy:FindFirstChildOfClass("Humanoid")
-        
-        if humanoidRootPart and humanoid and humanoid.Health > 0 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                closestTarget = enemy
+v11.HasRigEquipped = HasRigEquipped
+
+local function CanAttack(a0, a1, a2) --[[ Upvalues: v11 (copy) ]]
+    local v19 = require(game.ReplicatedStorage.Global).tapCooldown or 0
+    if os.clock() < v19 then
+        return
+    end
+
+    local v21 = a1 and a1:FindFirstChildWhichIsA("Humanoid")
+    if not v21 or v21.Health <= 0 then
+        return
+    end
+
+    local Stun = a1:FindFirstChild("Stun")
+    local Busy = a1:FindFirstChild("Busy")
+    if v21.Sit then
+        if a2 == "Sword" or a2 == "Melee" or a2 == "Gun" then
+            return
+        end
+    end
+
+    if not Stun or 0 >= Stun.Value then
+        if Busy then
+            if not Busy.Value then
+                -- jump to 65
+            end
+
+            -- branch continues at 65
+        end
+    end
+
+    return
+    if v11:HasRigEquipped(a1) then
+        return
+    end
+
+    return true
+end
+
+v11.CanAttack = CanAttack
+
+local function IsVulnerable(a0, a1) --[[ Upvalues: RunService (copy), Players (copy) ]]
+    if not a1 then
+        return
+    end
+
+    local v24 = a1 and a1:FindFirstChildWhichIsA("Humanoid")
+    if RunService:IsServer() then
+        local v26 = Players:GetPlayerFromCharacter(a1)
+        v24 = require(game.ReplicatedStorage.Global).getWrappedPlayer(v26)
+        if v24 and v24:dodging() then
+            return false
+        end
+    end
+
+    return 0 < v24.Health
+end
+
+v11.IsVulnerable = IsVulnerable
+
+local function GetRigOfHitPart(a0, a1) --[[ Upvalues: Enemies (copy), Characters (copy) ]]
+    local v27 = a1:FindFirstAncestorWhichIsA("Tool")
+    if v27 then
+        return v27.Parent
+    end
+
+    local v28 = Characters
+    local v29 = {Enemies, v28}
+    local v30 = nil
+    local v31 = nil
+    for k1, k2 in v29 do
+        for k3, k4 in k2:GetChildren() do
+            if a1:IsDescendantOf(k4) then
+                return k4
+            end
+        end
+    end
+end
+
+v11.GetRigOfHitPart = GetRigOfHitPart
+local v36 = nil
+local v37 = "RightFoot"
+local t1 = {
+    "RightUpperArm",
+    "RightLowerArm",
+    "RightHand",
+    "RightUpperLeg",
+    "RightLowerLeg",
+    v37,
+    "LeftUpperArm",
+    "LeftLowerArm",
+    "LeftHand",
+    "LeftUpperLeg",
+    "LeftLowerLeg",
+    "LeftFoot",
+    "UpperTorso",
+    "LowerTorso",
+    "Head",
+    "ModelHitbox"
+}
+local v38 = {}
+local v39 = t1
+local v40 = nil
+local v41 = nil
+for k5, k6 in v39 do
+    v38[k6] = true
+end
+
+local function removeFromTableBackwards(a0, a1)
+    while true do
+        local v42 = table.find(a0, a1)
+        if v42 then
+            table.remove(a0, v42)
+        end
+
+        if not v42 then
+            break
+        end
+    end
+end
+
+removeFromTableBackwards = removeFromTableBackwards
+local v43 = false
+
+local function GetHitDetectionParams(a0) --[[ Upvalues: v43 (ref), v36 (ref) ]]
+    if v43 then
+        return v36
+    end
+
+    v36 = OverlapParams.new()
+    v43 = true
+    return v36
+end
+
+v11.GetHitDetectionParams = GetHitDetectionParams
+t1 = {}
+
+local function ToggleLoadMovesetAnims(a0, a1, a2, a3) --[[ Upvalues: v11 (copy), t1 (copy), v13 (ref) ]]
+    local v44
+    if not (a2.WeaponType == "Gun" and a2.Moveset) then
+        v44 = a2.Moveset.Basic
+    end
+
+    local v45 = v44
+    local v46 = nil
+    local v47 = nil
+    for k7, k8 in v45 do
+        local v48
+        if a2.Moveset.Basic then
+            local v49 = v11:GetPureWeaponName(a2.Name)
+            v48 = v49 .. "-basic" .. k7
+        else
+            local v50 = v11:GetPureWeaponName(a2.Name)
+            v48 = v50 .. "-" .. k7
+        end
+
+        if a3 then
+            if not t1[a1] then
+                t1[a1] = {}
+            end
+
+            local Looped = k8.Looped
+            local v51 = v13.Anims:Get(a1.Parent, k8.AnimationId)
+            if v51 then
+                v51._Object.Name = v48
+                if string.match(v48, "Idle") then
+                    v51._Object.Looped = true
+                else
+                    v51._Object.Looped = Looped
+                    v51._Object.Priority = Enum.AnimationPriority.Action
+                    v51._Object:SetAttribute("SpeedMult", k8.SpeedMult)
+                end
+
+                t1[a1][v48] = v51
+                -- branch continues at 147
+            end
+        else
+            if t1[a1] then
+                local v52 = t1[a1][v48]
+                if v52 then
+                    v52:Stop()
+                    if typeof(v52) == "Instance" then
+                        v52:Destroy()
+                    else
+                        v52.Animation:Destroy()
+                    end
+                end
+
+                local v53 = t1[a1]
+                v53[v48] = nil
+                if not next(t1[a1]) then
+                    t1[a1] = nil
+                end
+            end
+        end
+    end
+end
+
+v11.ToggleLoadMovesetAnims = ToggleLoadMovesetAnims
+
+local function GetMovesetAnimCache(a0, a1) --[[ Upvalues: t1 (copy) ]]
+    return t1[a1]
+end
+
+v11.GetMovesetAnimCache = GetMovesetAnimCache
+
+local function GetLoadedAnimsFor(a0, a1, a2) --[[ Upvalues: v11 (copy) ]]
+    a1 = v11:GetPureWeaponName(a1)
+    local v54 = {}
+    local v55 = v11:GetMovesetAnimCache(a2)
+    if v55 then
+        local v56 = v55
+        local v57 = nil
+        local v58 = nil
+        for k9, k10 in v56 do
+            local v59, v60 = string.match(k9, "(.+)-(.+)")
+            if v59 == a1 then
+                v54[v60] = k10
             end
         end
     end
 
-    return closestTarget
+    return v54
 end
 
--- Loop de Ataque Turbo
-task.spawn(function()
-    while true do
-        local delayTime = Options.AttackSpeed and Options.AttackSpeed.Value or 0.15
-        task.wait(delayTime)
-        
-        if Options.KillAuraTurbo and Options.KillAuraTurbo.Value then
-            local target = getClosestEnemy()
-            if target then
-                local targetPart = target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart")
-                
-                if targetPart and RegisterHitEvent then
-                    pcall(function()
-                        local netModule = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Net")
-                        if netModule then
-                            local regAttack = netModule:FindFirstChild("RE/RegisterAttack")
-                            if regAttack then
-                                regAttack:FireServer(0.36666667461395264, 1)
-                            end
-                        end
-                        RegisterHitEvent:FireServer(targetPart)
+v11.GetLoadedAnimsFor = GetLoadedAnimsFor
+
+local function AttackStart(a0, a1, a2) --[[ Upvalues: v11 (copy), Enemies (copy), LocalPlayer (copy), v13 (ref) ]]
+    if not (a1 and a1.Parent) then
+        return
+    end
+
+    local Humanoid = a1.Parent:FindFirstChild("Humanoid")
+    local v62 = Humanoid and Humanoid.RootPart
+    local v64 = v62 and v62.Parent
+    if not v64 then
+        return
+    end
+
+    local v65 = require(game.ReplicatedStorage.Effect)
+    local EquippedWeapon = v64:FindFirstChild("EquippedWeapon")
+    local v66 = v11:GetWeaponName(EquippedWeapon or a1)
+    local v67 = v11:GetPureWeaponName(v66)
+    local v68 = v11:GetWeaponData(v66)
+    local Moveset1 = v68.Moveset
+    assert(Moveset1.Basic, ("Couldn't find the 'Basic' moveset for %*"):format(v66))
+    v66 = Moveset1.Basic[a2]
+    local v69 = v68.VFXDelay or v66.VFXDelay
+    local v70 = v64:IsDescendantOf(Enemies)
+    if EquippedWeapon then
+        for k11, k12 in EquippedWeapon:GetDescendants() do
+            if k12:IsA("Trail") and v67 ~= "dragontalon" then
+                k12.Enabled = true
+            else
+                if k12.Name == "HitEffect" and k12:IsA("ParticleEmitter") then
+                    task.delay(v69 or 0.25, function() --[[ Upvalues: k12 (copy) ]]
+                        k12:Emit(k12:GetAttribute("EmitCount") or 1)
                     end)
                 end
             end
         end
-    end
-end)
 
---------------------------------------------------------------------------------
--- ABA 2: AUTO FARM (Exemplo estrutural)
---------------------------------------------------------------------------------
-Tabs.Farm:AddToggle("AutoFarmLevel", {
-    Title = "Auto Farm Level (Mobs Próximos)",
-    Default = false
-})
+        local v74 = LocalPlayer
+        if v74 then
+            v74 = v64 ~= LocalPlayer.Character
+        end
 
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if Options.AutoFarmLevel and Options.AutoFarmLevel.Value then
-            pcall(function()
-                local target = getClosestEnemy()
-                if target and target:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    -- Puxa o player levemente acima/perto do mob para o Kill Aura pegar
-                    local targetCFrame = target.HumanoidRootPart.CFrame * CFrame.new(0, 5, 3)
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
+        if v70 or v74 then
+            task.delay(0.75, function() --[[ Upvalues: EquippedWeapon (copy) ]]
+                for k13, k14 in EquippedWeapon:GetDescendants() do
+                    if k14:IsA("Trail") then
+                        k14.Enabled = false
+                    end
                 end
+
             end)
         end
     end
-end)
 
---------------------------------------------------------------------------------
--- ABA 3: TELEPORTES (Sea 1 Exemplo)
---------------------------------------------------------------------------------
-local islandsSea1 = {
-    "Pirate Starter",
-    "Marine Starter",
-    "Jungle",
-    "Pirate Village",
-    "Desert",
-    "Snow Mountain",
-    "Magma Village"
-}
-
-Tabs.Teleport:AddDropdown("Sea1TP", {
-    Title = "Teleportar para Ilhas (Sea 1)",
-    Values = islandsSea1,
-    Default = 1,
-    Callback = function(Value)
-        local island = workspace._WorldOrigin.Locations.Map:FindFirstChild(Value)
-        if island and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = island.CFrame + Vector3.new(0, 50, 0)
-        end
+    if v67 == "superhuman" or v67 == "godhuman" then
+        task.delay(0.25, function() --[[ Upvalues: v65 (copy), v64 (copy), v67 (copy) ]]
+            local v78 = v65.new("Chop.Punch")
+            local t2 = {Character = v64}
+            t2.God = v67 == "godhuman"
+            v78:play(t2)
+        end)
+        -- jump to 232 (out of range)
     end
-})
 
---------------------------------------------------------------------------------
--- ABA 4: UTILIDADES / MISC
---------------------------------------------------------------------------------
-Tabs.Misc:AddButton({
-    Title = "Ativar NoClip (Atravessar Paredes)",
-    Description = "Desativa a colisão do seu personagem",
-    Callback = function()
-        game:GetService("RunService").Stepped:Connect(function()
-            if LocalPlayer.Character then
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
+    if v67 == "divineart" then
+        task.defer(function() --[[ Upvalues: v65 (copy), v62 (copy), a2 (copy) ]]
+            local t3 = {hrp = v62, index = a2}
+            v65.new("Angel.M1"):play(t3)
+        end)
+    else
+        if v67 == "flail" then
+            task.delay(0.3, function() --[[ Upvalues: v65 (copy), v64 (copy) ]]
+                local t4 = {God = true, Character = v64}
+                v65.new("Chop.Punch"):play(t4)
+            end)
+        else
+            if v67 == "dragontalon" then
+                task.defer(function() --[[ Upvalues: v65 (copy), v62 (copy), a2 (copy) ]]
+                    task.delay(0.25, function() --[[ Upvalues: v65 (upvalue), v62 (upvalue), a2 (upvalue) ]]
+                        local t5 = {Root = v62, Index = a2}
+                        v65.new("DragonTalon.M1"):play(t5)
+                    end)
+                end)
+            else
+                if v67 == "sanguineart" then
+                    task.defer(function() --[[ Upvalues: v65 (copy), v62 (copy), a2 (copy) ]]
+                        local t6 = {Root = v62, Combo = a2}
+                        v65.new("Ghoul.M1"):play(t6)
+                    end)
+                else
+                    if v67 == "sharkmankarate" then
+                        task.defer(function() --[[ Upvalues: v65 (copy), v64 (copy), Humanoid (copy), a2 (copy) ]]
+                            local t7 = {Character = v64, Humanoid = Humanoid, Combo = a2}
+                            v65.new("Sharkman2.M1"):play(t7)
+                        end)
+                    else
+                        if v67 == "fishmankarate" then
+                            task.defer(function() --[[ Upvalues: v65 (copy), v64 (copy), Humanoid (copy), a2 (copy) ]]
+                                local t8 = {Character = v64, Humanoid = Humanoid, Combo = a2}
+                                v65.new("WaterKungfu.M1"):play(t8)
+                            end)
+                        else
+                            if v67 == "anchor" then
+                                task.defer(function() --[[ Upvalues: EquippedWeapon (copy), a2 (copy), v13 (upvalue), v64 (copy), LocalPlayer (upvalue) ]]
+                                    local Animation = Instance.new("Animation")
+                                    Animation.AnimationId = "rbxassetid://14798724768"
+                                    local Animation1 = Instance.new("Animation")
+                                    Animation1.AnimationId = "rbxassetid://14798726082"
+                                    local Animation2 = Instance.new("Animation")
+                                    Animation2.AnimationId = "rbxassetid://14798728487"
+                                    local Animation3 = Instance.new("Animation")
+                                    Animation3.AnimationId = "rbxassetid://14798729807"
+                                    local v79 = {Animation, Animation1, Animation2, Animation3}
+                                    EquippedWeapon.Right.Anchor.AnimationController:LoadAnimation(v79[a2]):Play()
+                                    task.delay(0.2, function() --[[ Upvalues: v13 (upvalue), v64 (upvalue) ]]
+                                        v13.Sound:Play("SwordSwing", v64.HumanoidRootPart)
+                                    end)
+                                    if a2 == 4 and v64 == LocalPlayer.Character then
+                                        task.delay(0.2, function() --[[ Upvalues: v13 (upvalue), v64 (upvalue) ]]
+                                            local t9 = {
+                                                Duration = 0.15,
+                                                Velocity = v64.HumanoidRootPart.CFrame.lookVector * 100
+                                            }
+                                            v13.BodyMover.new(v64):Create("BodyVelocity", t9)
+                                        end)
+                                    end
+
+                                end)
+                            end
+                        end
                     end
                 end
             end
-        end)
-        Fluent:Notify({ Title = "Kalen Hub", Content = "NoClip ativado com sucesso!", Duration = 3 })
+        end
     end
-})
 
-Tabs.Misc:AddButton({
-    Title = "Remover Cooldown / Sprint Infinito",
-    Description = "Garante corrida infinita",
-    Callback = function()
-        pcall(function()
-            local stamina = LocalPlayer.Character:FindFirstChild("Energy")
-            if stamina then
-                stamina.Changed:Connect(function()
-                    stamina.Value = 100
-                end)
+    v70 = v66.PushDelay
+    v69 = v66.PushForce
+    if v70 or v69 then
+        task.delay(v70 or 0.2, function() --[[ Upvalues: v13 (upvalue), v64 (copy), v62 (copy), v69 (copy) ]]
+            local t10 = {Duration = 0.15, Velocity = v62.CFrame.LookVector * v69}
+            v13.BodyMover.new(v64):Create("BodyVelocity", t10)
+        end)
+    end
+
+    task.delay(v70 or 0.2, function() --[[ Upvalues: v13 (upvalue), v68 (copy), v62 (copy) ]]
+        local v80 = v68.SwingSound or "SwordSwing"
+        v13.Sound:Play(v80, v62)
+    end)
+    local AOEDelay = v66.AOEDelay
+    v70 = v66.AOEDistanceFromCharacter
+    if AOEDelay or v70 then
+        if not v66.CustomAOEVFX then
+            local delay = task.delay
+            local v83 = AOEDelay or v11:GetDefaultAOEDelay()
+            delay(v83, function() --[[ Upvalues: v13 (upvalue), v62 (copy), v70 (copy), Enemies (upvalue), v66 (copy), v65 (copy), v64 (copy) ]]
+                local v84 = v62.CFrame * Vector3.new(0, 0, -(v70 or 7.5))
+                local v85 = {workspace.Characters, Enemies}
+                local v86, v87 = v13.Ray(v84, Vector3.new(0, -4, 0), v85)
+                if v86 and not v66.CustomAOEEffect then
+                    local v88 = {PreviousPosition = nil, Character = v64, Position = v87}
+                    v65.new("Rubber.Transformed.Axe"):play(v88)
+                end
+
+            end)
+        end
+    end
+end
+
+v11.AttackStart = AttackStart
+
+local function CanCharacterMeleeAoe(a0, a1)
+    local v90 = a1 and a1:FindFirstChild("HumanoidRootPart")
+    local v92 = v90 and v90:FindFirstChild("Buddha")
+    if v92 then
+        return 10
+    end
+
+    return 1
+end
+
+v11.CanCharacterMeleeAoe = CanCharacterMeleeAoe
+local v102 = coroutine.create(function() --[[ Upvalues: v10 (copy) ]]
+    local v100, v101 = pcall(function() --[[ Upvalues: v10 (upvalue) ]]
+        while true do
+            task.wait()
+            if v10.RegisterHitEvent then
+                break
             end
-        end)
-        Fluent:Notify({ Title = "Kalen Hub", Content = "Sprint infinito aplicado!", Duration = 3 })
-    end
-})
+        end
 
-Window:SelectTab(1)
-Fluent:Notify({
-    Title = "Kalen Hub Carregado!",
-    Content = "Criado por miteuxz com sucesso.",
-    Duration = 5
-})
+        local v93 = tostring(game.Players.LocalPlayer.UserId):sub(2, 4)
+        local v94 = coroutine.running()
+        local v95 = tostring(v94)
+        local v96 = v95:sub(11, 15)
+        local v97 = v93 .. v96
+        v10.RegisterHitEvent:FireServer(v97)
+        while true do
+            local v98, v99 = coroutine.yield()
+            v10.RegisterHitEvent:FireServer(v98, v99, nil, v97)
+        end
+
+    end)
+    if not v100 then
+        warn(v101)
+    end
+
+end)
+if not v9 then
+    local v103 = require(game.ReplicatedStorage.Global)
+    v103.checkHits = function()
+    end
+
+    local v104 = require(game.ReplicatedStorage.Global)
+    v104.SendHitsToServer = function(...) --[[ Upvalues: v102 (copy) ]]
+        require(game.ReplicatedStorage.Global).checkHits(...)
+        coroutine.resume(v102, ...)
+    end
+
+    coroutine.resume(v102)
+end
+
+local t11 = {}
+
+local function registerHit(a0, a1, a2, a3, a4) --[[ Upvalues: v9 (copy), t11 (copy), v3 (copy), v102 (copy), v10 (copy), v11 (copy) ]]
+    if v9 then
+        require(game.ServerScriptService.Services.CombatService):RegisterHit(a0, a2)
+        return
+    end
+
+    if a4 then
+        for k15, k16 in pairs(a4) do
+            table.insert(t11, k16)
+        end
+
+        local v109 = {a1, a2}
+        table.insert(t11, v109)
+    end
+
+    if a0 == true then
+        local v110 = #t11
+        if 0 < v110 then
+            if v3.COMBAT_REMOTE_THREAD then
+                local v111 = table.remove(t11, 1)[2]
+                coroutine.resume(v102, v111, t11)
+            else
+                local v112 = table.remove(t11, 1)[2]
+                v10.RegisterHitEvent:FireServer(v112, t11)
+            end
+        end
+
+        table.clear(t11)
+    end
+
+    if a0 ~= true then
+        v11:ApplyDamageHighlight(a1, a0, a3.Name, a3.WeaponType, a2)
+    end
+end
+
+local function GetAttackAngle(a0, a1, a2)
+    return math.acos(a1.HumanoidRootPart.CFrame.LookVector:Dot((a2.HumanoidRootPart.Position - a1.HumanoidRootPart.Position).unit))
+end
+
+v11.GetAttackAngle = GetAttackAngle
+
+local function RunHitDetection(a0, a1, a2, a3) --[[ Upvalues: Players (copy), v11 (copy), Enemies (copy), Characters (copy), v36 (ref), RunService (copy), v10 (copy), v12 (copy), v38 (copy), registerHit (copy), v3 (copy), v5 (copy), v6 (copy), v9 (copy) ]]
+    local Parent1 = a1.Parent
+    local v113 = Players:GetPlayerFromCharacter(Parent1)
+    local HumanoidRootPart1 = Parent1.HumanoidRootPart
+    local UpperTorso = Parent1.UpperTorso
+    local RightFoot = Parent1.RightFoot
+    local Humanoid1 = Parent1.Humanoid
+    local v115 = Parent1:FindFirstChild("EquippedWeapon") or v11:GetEquippedWeaponTool(Parent1)
+    local v116 = v11:GetWeaponName(v115)
+    local v117 = v11:GetWeaponData(v116)
+    local v118 = v117.WeaponType == "Melee"
+    local v121 = v115:IsDescendantOf(Enemies) and not Parent1:FindFirstChild("Summoner")
+    local Summoner = Parent1:FindFirstChild("Summoner")
+    local Basic = v117.Moveset.Basic
+    local v122 = v116
+    assert(Basic, ("Couldn't find the 'Basic' moveset for %*"):format(v122))
+    if Basic[a2].AOEDelay ~= nil then
+        return
+    end
+
+    Basic = {}
+    if v118 then
+        for k17, k18 in Parent1:GetChildren() do
+            if k18:HasTag("WeaponHitbox") or k18:HasTag("Blade") then
+                table.insert(Basic, k18)
+            end
+        end
+    end
+
+    for k19, k20 in v115:GetDescendants() do
+        if k20:HasTag("WeaponHitbox") or k20:HasTag("Blade") then
+            table.insert(Basic, k20)
+        end
+    end
+
+    if v113 then
+        local v129 = game.CollectionService:GetTagged("M1HitRegistry")
+        table.insert(v129, Characters)
+        table.insert(v129, Enemies)
+        v36.IncludeInstances = v129
+    else
+        local v130 = {Characters, Enemies}
+        v36.IncludeInstances = v130
+    end
+
+    local v131 = v11:CanCharacterMeleeAoe(Parent1)
+    local t12 = {}
+    local t13 = {}
+    local t14 = {}
+
+    local function tryToRegisterHit(a0) --[[ Upvalues: v11 (upvalue), RunService (upvalue), t12 (copy), v10 (upvalue), v12 (upvalue), v38 (upvalue), Parent1 (copy), v113 (copy), v117 (copy), HumanoidRootPart1 (copy), v121 (copy), t13 (copy), v131 (copy), t14 (copy), registerHit (upvalue) ]]
+        local v132 = nil
+        local v133 = nil
+        local v134 = a0
+        local v135 = nil
+        local v136 = nil
+        for k21, k22 in v134 do
+            local v137 = v11:GetRigOfHitPart(k22)
+            if not v137 then
+                if k22:HasTag("M1HitRegistry") then
+                    if RunService:IsClient() then
+                        if not t12[k22] then
+                            t12[k22] = true
+                            v10.RegisterHitEvent:FireServer(k22)
+                            -- jump to 179 (out of range)
+                            -- branch continues at 179
+                        end
+                    end
+                end
+
+                if not v12[k22] then
+                    v12[k22] = true
+                    warn("No rig found for hit part:", k22)
+                    -- branch continues at 179
+                end
+            else
+                if v38[k22.Name] then
+                    local Summoner1 = v137:FindFirstChild("Summoner")
+                    local Summoner2 = Parent1:FindFirstChild("Summoner")
+                    if not Summoner2 or v137 ~= Summoner2.Value.Character then
+                        if not v113 or not Summoner1 or Summoner1.Value ~= v113 then
+                            local Position = HumanoidRootPart1.CFrame.Position
+                            local Position1 = v137.PrimaryPart.CFrame.Position
+                            local v138 = v11:GetAttackAngle(Parent1, v137)
+                            if not v117.ValidateFrontHits or 1.3 >= v138 then
+                                if not v121 or not v137:IsDescendantOf(workspace.Enemies) or Summoner2 or Summoner1 then
+                                    if v137 ~= Parent1 then
+                                        if v11:IsVulnerable(v137) then
+                                            if not v132 then
+                                                table.insert(t13, v137)
+                                                v132 = v137
+                                                v133 = k22
+                                            else
+                                                if #t13 < v131 and k22.Parent ~= v132 and not table.find(t13, k22.Parent) then
+                                                    local v139 = {v137, k22}
+                                                    table.insert(t14, v139)
+                                                    table.insert(t13, v137)
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if v132 then
+            registerHit(Parent1, v132, v133, v117, t14)
+        end
+
+        return v132, v133
+    end
+
+    local v140 = nil
+    local v141 = nil
+    if v3.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+        v140 = Instance.new("Part")
+        v140.Name = "BroadphaseHitboxPart"
+        v140.BrickColor = BrickColor.new("Bright red")
+        v140.Transparency = 0.8
+        v140.CanCollide = false
+        v140.CanTouch = false
+        v140.CanQuery = false
+        v140.Anchored = true
+        v140.Parent = workspace
+    end
+
+    local v142 = false
+    local Buddha2 = Parent1.HumanoidRootPart:FindFirstChild("Buddha2")
+    if Buddha2 or Parent1.HumanoidRootPart:FindFirstChild("Buddha") then
+        v142 = true
+    end
+
+    local v143 = HumanoidRootPart1.Size.Y * 0.5
+    local v144 = v143 + Humanoid1.HipHeight + 0.5
+    local v145 = nil
+    Humanoid1 = {}
+    local Length = a3._Object.Length
+    local v146 = 0
+    while v146 < Length do
+        if not a3._Object.IsPlaying then
+            break
+        end
+
+        if v145 then
+            break
+        end
+
+        v146 = v146 + task.wait()
+        if v115 then
+            if not v115:IsDescendantOf(workspace) then
+                break
+            end
+        end
+
+        if v146 >= 0.13 then
+            local CFrame = HumanoidRootPart1.CFrame
+            local Position2 = CFrame.Position
+            local v147 = CFrame * Vector3.new(UpperTorso.Size.X, 0, 0)
+            local v148 = math.clamp(v146 / Length, 0, 1)
+            local v149 = RightFoot.Size.Y * 0.5
+            local v150 = RightFoot.Position - Vector3.new(0, v149, 0)
+            v150 = v147:Lerp(Vector3.new(Position2.X, v150.Y, Position2.Z), v148)
+            local v151, v152 = v5(Basic)
+            local v153 = {CFrame = v151, Size = v152}
+            local v154 = v6(v153)
+            v151 = {}
+            local v155 = unpack(v154)
+            v151[1] = v147
+            v151[2] = v150
+            v151[3] = v155
+            local v156 = #Humanoid1
+            for i1 = #Humanoid1, v156 + 1 - 30, -1 do
+                v153 = Humanoid1[i1]
+                if v153 then
+                    local v160 = v153
+                    v156 = nil
+                    local v161 = nil
+                    for k23, k24 in v160 do
+                        table.insert(v151, CFrame * k24)
+                    end
+                end
+            end
+
+            v150 = {}
+            local v162 = v154
+            local v163 = nil
+            i1 = nil
+            local v164
+            for k25, k26 in v162 do
+                local v165 = CFrame:ToObjectSpace(k26)
+                table.insert(v150, v165)
+            end
+
+            table.insert(Humanoid1, v150)
+            local v166, v167 = v5(v151)
+            v166 = v166 * (CFrame - Position2)
+            local v168 = "CharacterSizeScaleNumber"
+            k26 = HumanoidRootPart1:GetAttribute(v168) or 1
+            local v171 = v121 and not Summoner
+            local v172
+            if v171 then
+                v172 = v172 * 0.5
+            end
+
+            v151 = HumanoidRootPart1.Size * (HumanoidRootPart1:GetAttribute("HrpSizeScale") or 1)
+            if v142 then
+                if v118 then
+                    v172 = Vector3.new(10.625, 7.5, 10) * v151.Y / 2
+                    v150 = v117.HitboxMagnitude
+                    if v150 then
+                        v172 = v172 * (1 + (v150 - 2) * 0.1)
+                    end
+
+                    if Buddha2 then
+                        v172 = v172 * Vector3.new(1, 1, 0.875)
+                    end
+
+                    local v173 = -v172.Y * 0.125
+                    local v174 = -v172.Z
+                    v166 = HumanoidRootPart1.CFrame * CFrame.new(0, v173, v174 / 3.25)
+                else
+                    local v175 = v151.Y * 4
+                    local v176 = math.max(v175, v172.Y)
+                    v172 = Vector3.new(v172.X, v176, v172.Z)
+                end
+            end
+
+            if v140 then
+                v140.CFrame = v166
+                v140.Size = v172
+            end
+
+            v148 = workspace:GetPartBoundsInBox(v166, v172, v36)
+            if v142 then
+                if v118 == false then
+                    v172 = Vector3.new(10.625, 7.5, 10) * v151.Y / 2
+                    v166 = v117.HitboxMagnitude
+                    if v166 then
+                        v172 = v172 * (1 + (v166 - 2) * 0.1)
+                    end
+
+                    if Buddha2 then
+                        v172 = v172 * Vector3.new(1, 1, 0.875)
+                    end
+
+                    local v177 = -v172.Y * 0.125
+                    v166 = HumanoidRootPart1.CFrame * CFrame.new(0, v177, -v172.Z / 3.25)
+                    if v3.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES and not v141 then
+                        v141 = Instance.new("Part")
+                        v141.Name = "BroadphaseHitboxPart"
+                        v141.BrickColor = BrickColor.new("Bright red")
+                        v141.Transparency = 0.8
+                        v141.CanCollide = false
+                        v141.CanTouch = false
+                        v141.CanQuery = false
+                        v141.Anchored = true
+                        v141.CFrame = v166
+                        v141.Size = v172
+                        v141.Parent = workspace
+                    end
+
+                    if v141 then
+                        v141.CFrame = v166
+                        v141.Size = v172
+                    end
+
+                    local v178 = workspace:GetPartBoundsInBox(v166, v172, v36)
+                    local v182
+                    for k27, k28 in pairs(v178) do
+                        v182 = table.insert
+                        v182(v148, k28)
+                    end
+                end
+            end
+
+            local v183, v184 = tryToRegisterHit(v148)
+            v145 = v183
+            local v185 = v184
+            if v145 then
+                v151 = Players:GetPlayerFromCharacter(v145)
+                if not v9 then
+                    break
+                end
+
+                if not v151 then
+                    break
+                end
+
+                v148 = v185.Position
+                for k29, k30 in Players:GetPlayers() do
+                    v147 = k30.Character
+                    if k30 ~= v113 and v147 and (v147:GetPivot().Position - v148).Magnitude <= 300 then
+                        v10.ReceivedHit:FireClient(v151, v145, v147, v117.Name, v117.WeaponType, v185)
+                    end
+                end
+
+                break
+            end
+
+            if not v142 or v118 == false then
+                v183 = Basic
+                v184 = nil
+                local v189 = nil
+                for k31, k32 in v183 do
+                    Position2 = k32.Size
+                    if v171 then
+                        Position2 = Position2 * 0.5
+                    else
+                        CFrame = v117.HitboxMagnitude
+                        if CFrame then
+                            Position2 = Position2 + Vector3.new(1, 1, 1) * CFrame
+                        end
+
+                        if v118 then
+                            Position2 = Position2 + Vector3.new(2, 2, 2)
+                        end
+
+                        if Parent1.HumanoidRootPart:FindFirstChild("Buddha2") then
+                            Position2 = Position2 * 1.5
+                        else
+                            if Parent1.HumanoidRootPart:FindFirstChild("Buddha") then
+                                Position2 = Position2 * 1.2
+                            end
+                        end
+
+                        local v190 = math.max(3, Position2.X)
+                        local v191 = math.max(3, Position2.Y)
+                        v164 = Position2.Z
+                        Position2 = Vector3.new(v190, v191, math.max(3, v164))
+                    end
+
+                    if v3.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+                        local Part = Instance.new("Part")
+                        Part.BrickColor = BrickColor.new("Bright red")
+                        Part.Transparency = 0.5
+                        Part.CanCollide = false
+                        Part.CanTouch = false
+                        Part.CanQuery = false
+                        Part.Anchored = true
+                        Part.CFrame = k32.CFrame
+                        Part.Size = Position2
+                        Part.Parent = workspace
+                        task.delay(0, function() --[[ Upvalues: Part (copy) ]]
+                            Part:Destroy()
+                        end)
+                    end
+
+                    local v192 = workspace:GetPartBoundsInBox(k32.CFrame, Position2, v36)
+                    local v193, v194 = tryToRegisterHit(v192)
+                    v145 = v193
+                    v185 = v194
+                    if v145 then
+                        local v195 = Players:GetPlayerFromCharacter(v145)
+                        if not v9 then
+                            break
+                        end
+
+                        if not v195 then
+                            break
+                        end
+
+                        Position2 = v185.Position
+                        for k33, k34 in Players:GetPlayers() do
+                            local Character = k34.Character
+                            if k34 ~= v113 and Character and (Character:GetPivot().Position - Position2).Magnitude <= 300 then
+                                v10.ReceivedHit:FireClient(v195, v145, Character, v117.Name, v117.WeaponType, v185)
+                            end
+                        end
+
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    if v113 == game.Players.LocalPlayer then
+        registerHit(true)
+    end
+
+    if v3.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+        task.delay(0.1, function() --[[ Upvalues: v140 (ref) ]]
+            v140:Destroy()
+        end)
+        if v141 then
+            task.delay(0.1, function() --[[ Upvalues: v141 (ref) ]]
+                v141:Destroy()
+            end)
+        end
+    end
+end
+
+v11.RunHitDetection = RunHitDetection
+
+local function toCamelCase(a0)
+    local v199 = a0:sub(1, 1)
+    local v200 = string.lower(v199)
+    return v200 .. a0:sub(2, #a0)
+end
+
+local function toPascalCase(a0)
+    local v201 = a0:sub(1, 1)
+    local v202 = string.upper(v201)
+    return v202 .. a0:sub(2, #a0)
+end
+
+local function removeSpaces(a0)
+    local v203 = string.gsub(a0, "%s", "")
+    return v203
+end
+
+local function GetWeaponData(a0, a1) --[[ Upvalues: v11 (copy), v2 (copy) ]]
+    local v204 = v11:GetPureWeaponName(a1)
+    local v205 = string.gsub(a1, "%s", "")
+    local v206 = string.lower(a1)
+    local v207 = a1:sub(1, 1)
+    local v208 = string.lower(v207)
+    local v209 = v208 .. a1:sub(2, #a1)
+    local v210 = a1:sub(1, 1)
+    local v211 = string.upper(v210)
+    local t15 = {a1, v204, v205, v206, v209, v211 .. a1:sub(2, #a1)}
+    local v212 = t15
+    v204 = nil
+    v205 = nil
+    for k35, k36 in v212 do
+        local v213 = v2[k36]
+        if v213 then
+            return v213
+        end
+    end
+end
+
+v11.GetWeaponData = GetWeaponData
+
+local function GetWeaponName(a0, a1)
+    local v215 = a1:GetAttribute("WeaponName") or a1.Name
+    return v215
+end
+
+v11.GetWeaponName = GetWeaponName
+
+local function GetWeaponModel(a0, a1, a2) --[[ Upvalues: v11 (copy) ]]
+    local v216 = v11:GetPureWeaponName(a2)
+    for k37, k38 in a1:GetChildren() do
+        if v11:GetPureWeaponName(k38.Name) == v216 then
+            return k38
+        end
+    end
+end
+
+v11.GetWeaponModel = GetWeaponModel
+
+local function GetEquippedWeaponTool(a0, a1)
+    for k39, k40 in a1:GetChildren() do
+        if k40:IsA("Tool") then
+            if k40:HasTag("MeleeTool") or k40:HasTag("GunTool") then
+                return k40
+            end
+        end
+    end
+end
+
+v11.GetEquippedWeaponTool = GetEquippedWeaponTool
+
+local function CreateShootAngles(a0, a1)
+    if a1.NoSpread then
+        local v223 = {Angle = CFrame.Angles(0, 0, 0)}
+        local v224 = {v223}
+        return v224
+    end
+
+    local v225 = {}
+    local v226 = Random.new(a1.Seed)
+    local v227 = a1.BulletSpreadCount or 7
+    local v228 = a1.BulletSpreadDegree or 12
+
+    local function addAngle() --[[ Upvalues: v226 (copy), v228 (copy), v225 (copy) ]]
+        local v229 = -v228 / 2
+        local v230 = math.rad(v226:NextNumber(v229, v228 / 2))
+        v229 = -v228 / 2
+        local v231 = math.rad(v226:NextNumber(v229, v228 / 2))
+        local v232 = -v228 / 2
+        v232 = {Angle = CFrame.Angles(v230, v231, math.rad(v226:NextNumber(v232, v228 / 2)))}
+        table.insert(v225, v232)
+    end
+
+    if a1.BulletSpreadCount == 1 then
+        addAngle()
+        return v225
+    end
+
+    local v233 = {Angle = CFrame.Angles(0, 0, 0)}
+    table.insert(v225, v233)
+    for i2 = 1, v227 - 1 do
+        addAngle()
+    end
+
+    return v225
+end
+
+v11.CreateShootAngles = CreateShootAngles
+
+local function GetToolOfWeaponType(a0, a1, a2) --[[ Upvalues: Players (copy) ]]
+    local v236 = Players:GetPlayerFromCharacter(a1)
+    if v236 then
+        for k41, k42 in v236.Backpack:GetChildren() do
+            if k42:IsA("Tool") and k42:GetAttribute("WeaponType") == a2 then
+                return k42
+            end
+        end
+    end
+
+    local v240 = a1:FindFirstChildWhichIsA("Tool")
+    if v240 and v240:GetAttribute("WeaponType") == a2 then
+        return v240
+    end
+end
+
+v11.GetToolOfWeaponType = GetToolOfWeaponType
+
+local function PlayMeleeHitParticles(a0, a1, a2, a3) --[[ Upvalues: v11 (copy), v14 (ref) ]]
+    task.defer(function() --[[ Upvalues: a2 (copy), a1 (copy), v11 (upvalue), a3 (copy), v14 (upvalue) ]]
+        local v241
+        if not (a2 and a2.Position) then
+            local Position4 = a1:GetPivot().Position
+        end
+
+        local v242 = v11:GetWeaponData(a3)
+        v14.play("Hit", v241, v242)
+    end)
+end
+
+v11.PlayMeleeHitParticles = PlayMeleeHitParticles
+
+local function ApplyDamageHighlight(a0, a1, a2, a3, a4, a5, a6) --[[ Upvalues: v11 (copy), Players (copy), Enemies (copy), TweenService (copy), v7 (copy), v8 (copy) ]]
+    if v11:HasRigEquipped(a1) then
+        return
+    end
+
+    local v243 = Players:GetPlayerFromCharacter(a1)
+    local v244 = Players:GetPlayerFromCharacter(a2)
+    if not v243 and not v244 then
+        return
+    end
+
+    if v243 and v244 and require(game.ReplicatedStorage.Global).InSafeZone then
+        return
+    end
+
+    if v243 then
+        if v243:GetAttribute("PvpDisabled") then
+            return
+        end
+
+        if v243:GetAttribute("KenActive") then
+            local v245 = v243:GetAttribute("KenDodgesLeft") or 0
+            local v246 = tick() - (v243:GetAttribute("LastKenDodge") or 0)
+            if 0 < v245 or v246 <= 0.4 then
+                return
+            end
+        end
+    end
+
+    local v247
+    if a2 and a2:IsDescendantOf(Enemies) then
+        v247 = a2
+    else
+        v247 = nil
+    end
+
+    local v248
+    if a1 and a1:IsDescendantOf(Enemies) then
+        v248 = a1
+    else
+        v248 = nil
+    end
+
+    local v250
+    if not (v247 and v247:GetAttribute("Level")) then
+        local v252 = v248 and v248:GetAttribute("Level")
+    end
+
+    local v254
+    if not (v247 and v247:GetAttribute("IsBoss")) then
+        local v256 = v248 and v248:GetAttribute("IsBoss")
+    end
+
+    local v258 = v244 and v244:FindFirstChild("Data")
+    local v260 = v243 and v243:FindFirstChild("Data")
+    local v261
+    if not (v258 and v258.Level.Value) then
+    end
+
+    local v263
+    if not (v260 and v260.Level.Value) then
+        v263 = v248 and v250
+    end
+
+    v260 = math.floor((v261 / 175) ^ 1.5) * 2
+    local v264 = nil
+    if v244 then
+        v261 = v11:GetToolOfWeaponType(a2, "Melee")
+        if v261 then
+            v264 = v261:GetAttribute("WeaponName")
+            -- branch continues at 191
+        end
+    else
+        if v247 then
+            v264 = v247:GetAttribute("WeaponName")
+        end
+    end
+
+    v248 = v11:GetToolOfWeaponType(a1, "Demon Fruit")
+    if a4 == "Melee" or a4 == "Sword" or a4 == "Gun" then
+        if v248 and v248.Name == "Rubber-Rubber" and a4 == "Melee" and v258 and v264 == "Electro" then
+            return
+        end
+
+        if v248 then
+            if v248.Name == "Blade-Blade" then
+                if a4 == "Sword" then
+                    if not v247 or v254 then
+                        if v247 then
+                            -- jump to 233
+                        end
+                    end
+
+                    if not v247 or v250 > v263 - v260 then
+                        if v247 then
+                            -- jump to 296
+                        end
+                    end
+
+                    return
+                    -- branch continues at 233
+                end
+
+                -- branch continues at 233
+            end
+        else
+            if v248 then
+                if v248.Name == "Rubber-Rubber" then
+                    if a4 == "Gun" then
+                        if not v247 or v254 then
+                            if v247 then
+                                -- jump to 250
+                            end
+                        end
+
+                        if not v247 or v250 > v263 - v260 then
+                            if v247 then
+                                -- jump to 296
+                            end
+                        end
+
+                        return
+                        -- branch continues at 250
+                    end
+
+                    -- branch continues at 250
+                end
+            else
+                if v248 then
+                    if v248:FindFirstChild("Logia") then
+                        if not a2:GetAttribute("BusoEnabled") then
+                            if not v247 or v250 > v263 - v260 then
+                                if v247 then
+                                    -- jump to 296
+                                end
+                            end
+
+                            return
+                            -- branch continues at 270
+                        end
+
+                        -- branch continues at 270
+                    end
+                else
+                    if v248 then
+                        if v248:FindFirstChild("LogiaDough") then
+                            if v243 then
+                                if v243:GetAttribute("KenActive") then
+                                    if not a2:GetAttribute("BusoEnabled") then
+                                        if not v247 or v250 > v263 - v260 then
+                                            if v247 then
+                                                -- jump to 296
+                                            end
+                                        end
+
+                                        return
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if not v243 and a1:GetAttribute("FruitType") == "Logia" and not a2:GetAttribute("BusoEnabled") then
+        return
+    end
+
+    if a4 ~= "Gun" then
+        v11:PlayMeleeHitParticles(a1, a5, a3)
+    end
+
+    local v265 = a1:FindFirstChildOfClass("Highlight")
+    if v265 then
+        if v265:GetAttribute("__FillColor") then
+            v260 = Color3.fromRGB(138, 0, 0)
+            local v266 = TweenInfo.new(0.2)
+            local v267 = {FillColor = v260}
+            TweenService:Create(v265, v266, v267):Play()
+            task.delay(0.2, function() --[[ Upvalues: TweenService (upvalue), v265 (copy) ]]
+                local v268 = TweenInfo.new(0.2)
+                local v269 = {FillColor = v265:GetAttribute("__FillColor")}
+                TweenService:Create(v265, v268, v269):Play()
+            end)
+        end
+
+        return true
+    end
+
+    v258 = v7(script.DamageHighlight):Clone()
+    v258.Adornee = v8(a1)
+    v258.Parent = a1
+    local v270 = TweenInfo.new(0.2)
+    TweenService:Create(v258, v270, {FillTransparency = 0.5}):Play()
+    task.delay(0.2, function() --[[ Upvalues: TweenService (upvalue), v258 (copy) ]]
+        local v271 = TweenInfo.new(0.2)
+        TweenService:Create(v258, v271, {FillTransparency = 1}):Play()
+        task.wait(0.2)
+        v258:Destroy()
+    end)
+    return true
+end
+
+v11.ApplyDamageHighlight = ApplyDamageHighlight
+
+local function IsGunReloading(a0, a1) --[[ Upvalues: v9 (copy) ]]
+    if v9 then
+        local v275 = not a1.Enabled or a1:GetAttribute("IsReloading") or a1:GetAttribute("UnequipAutoReloading")
+        return v275
+    end
+
+    local v279 = not a1.Enabled or a1:GetAttribute("IsReloading_Client") or a1:GetAttribute("UnequipAutoReloading")
+    return v279
+end
+
+v11.IsGunReloading = IsGunReloading
+local v280 = RaycastParams.new()
+v280.FilterType = Enum.RaycastFilterType.Exclude
+local v281 = {workspace._WorldOrigin, workspace.Characters, Enemies}
+v280.FilterDescendantsInstances = v281
+local v282 = RaycastParams.new()
+v282.FilterType = Enum.RaycastFilterType.Exclude
+
+local function GetTargetPosition(a0, a1, a2, a3, a4) --[[ Upvalues: v282 (copy), v280 (copy) ]]
+    debug.profilebegin("GetTargetPosition")
+    a3 = a3 or math.huge
+    local v283 = a2 - a1
+    if a3 < v283.Magnitude then
+        a2 = a1 + v283.Unit * a3
+    end
+
+    if a4 then
+        local v284 = {workspace._WorldOrigin, a4}
+        v282.FilterDescendantsInstances = v284
+    end
+
+    local v287 = workspace:Raycast(a1, a2 - a1, a4 and v282 or v280)
+    if v287 then
+        a2 = v287.Position
+    end
+
+    debug.profileend()
+    return a2
+end
+
+v11.GetTargetPosition = GetTargetPosition
+return v11
